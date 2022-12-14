@@ -33,6 +33,55 @@ Begin
     DROP table Ticket_Buying_Transactions
 end
 
+GO
+CREATE PROC dropAllProceduresFunctionsView
+AS
+DROP PROC createAllTables
+DROP PROC dropAllTables
+DROP PROC clearAllTables
+DROP VIEW allAssocManagers
+DROP VIEW allClubRepresentatives
+DROP VIEW allStadiumManagers
+DROP VIEW allFans
+DROP VIEW allMatches
+DROP VIEW allTickets
+DROP VIEW allClubs
+DROP VIEW allStadiums
+DROP VIEW allRequests
+DROP PROC addAssociationManager
+DROP PROC addNewMatch
+DROP VIEW clubsWithNoMatches
+DROP PROC deleteMatch
+DROP PROC deleteMatchesOnStadium
+DROP PROC addClub
+DROP PROC addTicket
+DROP PROC deleteClub
+DROP PROC addStadium
+DROP PROC deleteStadium
+DROP PROC blockFan
+DROP PROC unblockFan
+DROP PROC addRepresentative
+DROP FUNCTION viewAvailableStadiumsOn
+DROP PROC addHostRequest
+DROP FUNCTION allUnassignedMatches
+DROP PROC addStadiumManager
+DROP FUNCTION allPendingRequests
+DROP PROC acceptRequest
+DROP PROC rejectRequest
+DROP PROC addFan
+DROP FUNCTION upcomingMatchesOfClub
+DROP FUNCTION availableMatchesToAttend
+DROP PROC purchaseTicket
+DROP PROC updateMatchHost
+DROP VIEW matchesPerTeam
+DROP VIEW clubsNeverMatched
+DROP FUNCTION clubsNeverPlayed
+DROP FUNCTION rankMatches --helper
+DROP FUNCTION matchWithHighestAttendance
+DROP FUNCTION matchesRankedByAttendance
+DROP FUNCTION requestsFromClub
+
+
 go
 CREATE PROC clearAllTables 
 as 
@@ -257,6 +306,13 @@ Insert into club_representative (name_, username, club_ID) values(@nameV, @usern
 End
 Go;
 
+create function viewAvailableStadiumsOn
+(@dateV datetime)
+Returns Table
+As 
+	Return (Select Stadium.name_, Stadium.location_, Stadium.capacity From (Stadium Left Outer Join Match_ ON Stadium.id = Match_.stadium_id) Where (status_ = 1) and ((Match_.start_time <> @dateV) or Match_.id IS NULL));
+Go;
+
 create procedure addHostRequest 
 @club_nameV varchar(20),
 @stadium_nameV varchar(20),
@@ -268,6 +324,12 @@ Insert into Host_Request (status_, match_id, manager_id, representative_id) valu
 End
 Go;
 
+create function allUnassignedMatches
+(@club_nameV varchar(20))
+Returns Table
+As
+	Return (Select HC.name_, M.start_time From (Match_ M Inner Join Club HC ON M.host_club_id = HC.id Inner Join Club GC ON M.guest_club_id = GC.id) Where (HC.name_ = @club_nameV) and (M.stadium_id IS NULL));
+Go;
 
 create procedure addStadiumManager
 @nameV varchar(20),
@@ -279,21 +341,6 @@ Begin
 insert into SystemUser values(@usernameV, @passwordV);
 insert into Stadium_Manager values(@nameV, @usernameV, (select id from Stadium where name_ = @stadium_nameV));
 End
-Go;
-
-
-create function viewAvailableStadiumsOn
-(@dateV datetime)
-Returns Table
-As 
-	Return (Select Stadium.name_, Stadium.location_, Stadium.capacity From (Stadium Left Outer Join Match_ ON Stadium.id = Match_.stadium_id) Where (status_ = 1) and ((Match_.start_time <> @dateV) or Match_.id IS NULL));
-Go;
-
-create function allUnassignedMatches
-(@club_nameV varchar(20))
-Returns Table
-As
-	Return (Select HC.name_, M.start_time From (Match_ M Inner Join Club HC ON M.host_club_id = HC.id Inner Join Club GC ON M.guest_club_id = GC.id) Where (HC.name_ = @club_nameV) and (M.stadium_id IS NULL));
 Go;
 
 
@@ -502,7 +549,7 @@ ON C.club_id = M.guest_club_id
 INNER JOIN CLUB C2 
 ON C2.club_id = M.host_club_id
 WHERE C2.name_ = @club_name)
-)
+)   
 Go
 
 --helper function
