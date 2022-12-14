@@ -137,7 +137,7 @@ insert into match_ values(start_time,end_time,@c1,@c2,null)
 END
 Go
 
--- create function [return_g_name]
+-- create function return_g_name
 -- (@club1_name varchar(20),@club2_name varchar(20),@host_name varchar(20))
 -- RETURNS int
 -- AS
@@ -206,6 +206,96 @@ as BEGIN
 DELETE from club where name_=@name; --should i delete matches or add on delete cascade cons??
 END
 GO
+
+create procedure addStadium 
+@nameV varchar(20),
+@locationV varchar(20),
+@capacityV int
+As 
+Begin
+Insert into Stadium (status_, name_, capacity, location_) values(1, @nameV, @capacityV, @locationV);
+End
+Go;
+
+create procedure deleteStadium
+@nameV varchar(20)
+As 
+Begin
+Delete From Stadium Where name_= @nameV;
+End
+Go;
+
+create procedure blockFan
+@national_idV varchar(20)
+As
+Begin
+Update Fan
+Set status_bit = 1
+Where national_id = @national_idV;
+End
+Go;
+
+create procedure unblockFan
+@national_idV varchar(20)
+As
+Begin
+Update Fan
+Set status_bit = 0
+Where national_id = @national_idV;
+End
+Go;
+
+create procedure addRepresentative 
+@nameV varchar(20),
+@club_nameV varchar(20),
+@usernameV varchar(20),
+@passwordV varchar(20)
+As 
+Begin
+Insert into SystemUser values (@usernameV, @passwordV);
+Insert into club_representative (name_, username, club_ID) values(@nameV, @usernameV, (Select id From Club where name_ = @club_nameV));
+End
+Go;
+
+create procedure addHostRequest 
+@club_nameV varchar(20),
+@stadium_nameV varchar(20),
+@start_timeV datetime
+As 
+Begin
+Insert into Host_Request (status_, match_id, manager_id, representative_id) values 
+('unhandled', (select id from Match_ where start_time = @start_timeV and host_club_id = (Select id from Club where name_ = @club_nameV)), (select Stadium_Manager.id from Stadium_Manager Inner Join Stadium ON Stadium_Manager.studium_id = Stadium.id where Stadium.name_ = @stadium_nameV), (select Club_Representative.id from Club_Representative Inner Join Club ON Club_Representative.club_ID = Club.id where Club.name_ = @club_nameV)); 
+End
+Go;
+
+
+create procedure addStadiumManager
+@nameV varchar(20),
+@stadium_nameV varchar(20),
+@usernameV varchar(20),
+@passwordV varchar(20)
+As 
+Begin
+insert into SystemUser values(@usernameV, @passwordV);
+insert into Stadium_Manager values(@nameV, @usernameV, (select id from Stadium where name_ = @stadium_nameV));
+End
+Go;
+
+
+create function viewAvailableStadiumsOn
+(@dateV datetime)
+Returns Table
+As 
+	Return (Select Stadium.name_, Stadium.location_, Stadium.capacity From (Stadium Left Outer Join Match_ ON Stadium.id = Match_.stadium_id) Where (status_ = 1) and ((Match_.start_time <> @dateV) or Match_.id IS NULL));
+Go;
+
+create function allUnassignedMatches
+(@club_nameV varchar(20))
+Returns Table
+As
+	Return (Select HC.name_, M.start_time From (Match_ M Inner Join Club HC ON M.host_club_id = HC.id Inner Join Club GC ON M.guest_club_id = GC.id) Where (HC.name_ = @club_nameV) and (M.stadium_id IS NULL));
+Go;
+
 
 create function allPendingRequests
 (@stadium_manager_name varchar(20))
@@ -471,6 +561,3 @@ INNER JOIN Club_Representative CR ON CR.id = H.representative_id
 INNER JOIN Club C ON C.club_id = CR.club_id
 WHERE S.name_ = @stadium_name and CR.name_ = @club_name
 )
-
-
-
