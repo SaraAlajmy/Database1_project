@@ -14,6 +14,7 @@ CREATE TABLE Ticket(id int primary key IDENTITY, status_ bit,match_id int,foreig
 CREATE TABLE Host_Request(id int primary key IDENTITY, status_ varchar(20), match_id int foreign key references match(id),manager_id int foreign key references Stadium_Manager(id),representative_id int foreign key references Club_Representative(id))
 CREATE TABLE Ticket_Buying_Transactions(fan_national_Id int foreign key references fan(national_id),ticket_id int foreign key references Ticket(id))
 
+
 --EXEC createAllTables;
 GO
 CREATE PROC dropAllTables 
