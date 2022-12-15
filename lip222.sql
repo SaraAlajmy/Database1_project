@@ -1,41 +1,44 @@
 CREATE PROC createAllTables 
 as 
-
-CREATE TABLE SystemUser (username varchar(20) primary key ,password_ varchar(20))
+begin
+CREATE TABLE System_User_ (username varchar(20) primary key ,password_ varchar(20))
 CREATE TABLE Club(id int primary key IDENTITY, name_ varchar(20), location_ varchar(20))
 CREATE TABLE Stadium(id int primary key IDENTITY, status_ bit, name_ varchar(20), capacity int, location_ varchar(20))
-CREATE TABLE Club_Representative(id int primary key IDENTITY, name_ varchar(20), username varchar(20), foreign key(username) references SystemUser,club_id int, foreign key(club_id) references Club(id))
-CREATE TABLE Stadium_Manager(id int primary key IDENTITY, name_ varchar(20), username varchar(20), foreign key(username) references SystemUser(username),stadium_id int,foreign key(stadium_id)references Stadium(id))
-CREATE TABLE Fan(national_id int primary key, phone_number int, name_ varchar(20), address_ varchar(20), status_ bit, birth_date date, username varchar(20), foreign key(username) references SystemUser(username))
-CREATE TABLE Sports_Association_Manager(id int primary key IDENTITY, name_ varchar(20), username varchar(20), foreign key(username) references SystemUser(username))
-CREATE TABLE System_Admin(id int primary key IDENTITY, name_ varchar(20), username varchar(20), foreign key(username) references SystemUser(username))
-CREATE TABLE Match_(id int primary key IDENTITY, start_time datetime, end_time datetime,host_club_id int,guest_club_id int,foreign key(host_club_id) references club(id),FOREIGN key(guest_club_id) REFERENCES club(id),stadium_id int,FOREIGN key(stadium_id) REFERENCES stadium(id) )
-CREATE TABLE Ticket(id int primary key IDENTITY, status_ bit,match_id int,foreign key (match_id) references Match_(id))
-CREATE TABLE Host_Request(id int primary key IDENTITY, status_ varchar(20), match_id int foreign key references match(id),manager_id int foreign key references Stadium_Manager(id),representative_id int foreign key references Club_Representative(id))
-CREATE TABLE Ticket_Buying_Transactions(fan_national_Id int foreign key references fan(national_id),ticket_id int foreign key references Ticket(id))
+CREATE TABLE Club_Representative(id int primary key IDENTITY, name_ varchar(20), username varchar(20), foreign key(username) references System_User_,club_id int, foreign key(club_id) references Club(id) on delete no action)
+CREATE TABLE Stadium_Manager(id int primary key IDENTITY, name_ varchar(20), username varchar(20), foreign key(username) references System_User_(username),stadium_id int,foreign key(stadium_id)references Stadium(id) on delete no action)
+CREATE TABLE Fan(national_id int primary key, phone_number int, name_ varchar(20), address_ varchar(20), status_ bit, birth_date date, username varchar(20), foreign key(username) references System_User_(username))
+CREATE TABLE Sports_Association_Manager(id int primary key IDENTITY, name_ varchar(20), username varchar(20), foreign key(username) references System_User_(username))
+CREATE TABLE System_Admin(id int primary key IDENTITY, name_ varchar(20), username varchar(20), foreign key(username) references System_User_(username))
+CREATE TABLE Match_(id int primary key IDENTITY, start_time datetime, end_time datetime,host_club_id int,guest_club_id int,foreign key(host_club_id) references club(id) on delete no action on update no action,FOREIGN key(guest_club_id) REFERENCES club(id) on delete no action on update no action,stadium_id int,FOREIGN key(stadium_id) REFERENCES stadium(id) on delete no action on update no action)
+CREATE TABLE Ticket(id int primary key IDENTITY, status_ bit,match_id int,foreign key (match_id) references Match_(id) on delete cascade)
+CREATE TABLE Host_Request(id int primary key IDENTITY, status_ varchar(20), match_id int foreign key references match_(id) on delete no action,manager_id int foreign key references Stadium_Manager(id) on delete cascade on update cascade ,representative_id int foreign key references Club_Representative(id) on delete cascade on update cascade)
+CREATE TABLE Ticket_Buying_Transactions(fan_national_Id int foreign key references fan(national_id) on delete no action,ticket_id int foreign key references Ticket(id) on delete cascade)
+end
+
+--EXEC createAllTables
 
 
---EXEC createAllTables;
+    
 GO
 CREATE PROC dropAllTables 
 as 
 Begin
-    DROP TABLE SystemUser;
-    DROP TABLE Club_Representative;
-    DROP TABLE Stadium_Manager;
-    DROP TABLE Fan;
-    DROP TABLE Sports_Association_Manager;
-    DROP TABLE System_Admin;
-    DROP TABLE Ticket;
-    DROP TABLE Club;
-    DROP TABLE Host_Request;
-    DROP TABLE Match_;
-    DROP TABLE Stadium;
-    DROP table Ticket_Buying_Transactions
+DROP TABLE Ticket_Buying_Transactions
+DROP TABLE Host_Request
+DROP TABLE Ticket
+DROP TABLE Match_
+DROP TABLE System_Admin
+DROP TABLE Sports_Association_Manager
+DROP TABLE Fan
+DROP TABLE Stadium_Manager
+DROP TABLE Club_Representative
+DROP TABLE Stadium
+DROP TABLE Club
+DROP TABLE System_User_
 end
 
 GO
-CREATE PROC dropAllProceduresFunctionsView
+CREATE PROC dropAllProceduresFunctionsViews
 AS
 DROP PROC createAllTables
 DROP PROC dropAllTables
@@ -77,7 +80,8 @@ DROP PROC updateMatchHost
 DROP VIEW matchesPerTeam
 DROP VIEW clubsNeverMatched
 DROP FUNCTION clubsNeverPlayed
-DROP FUNCTION rankMatches --helper
+DROP FUNCTION NumberOfTicketsForEachMatch --helper
+DROP FUNCTION pastMatches --helper
 DROP FUNCTION matchWithHighestAttendance
 DROP FUNCTION matchesRankedByAttendance
 DROP FUNCTION requestsFromClub
@@ -87,7 +91,7 @@ go
 CREATE PROC clearAllTables 
 as 
 BEGIN
-    Truncate TABLE SystemUser;
+    Truncate TABLE System_User_;
     TRUNCATE TABLE Club_Representitave;
     TRUNCATE TABLE Stadium_Manager;
     TRUNCATE TABLE Fan;
@@ -104,39 +108,39 @@ END
 GO
 CREATE VIEW allAssocManagers
 AS
-SELECT s.username, u.password,s.name_ 
-FROM Sports_Association_Manager s ,SystemUser u
+SELECT s.username, u.password_,s.name_ 
+FROM Sports_Association_Manager s ,System_User_ u
 where s.username=u.username
 go
 
 CREATE VIEW allClubRepresentatives
 AS
-SELECT R.username, u.password_ ,R.name_,C.name_
-From  Club_Representative R Inner join  SYSTEMUser u on r.username=u.username INNER JOIN Club C ON R.club_id=C.id
+SELECT R.username, u.password_ ,R.name_ as Club_Rep_Name,C.name_ as Club_Name
+From  Club_Representative R Inner join  System_User_ u on r.username=u.username INNER JOIN Club C ON R.club_id=C.id
 go
 
 Create VIEW allStadiumManagers
 AS
-SELECT M.username,u.password_, M.name_, S.name_
-From Stadium_Manager M inner join systemuser u on u.username=m.username INNER JOIN Stadium S ON M.stadium_id=S.id
+SELECT M.username,u.password_, M.name_ as Stadium_Manager_Name, S.name_ as Stadium_Name
+From Stadium_Manager M inner join System_User_ u on u.username=m.username INNER JOIN Stadium S ON M.stadium_id=S.id
 go
 
 Create VIEW allFans
 As 
-SELECT f.username ,u.password_,f.national_id, f.name_, f.status_, f.birthdate
-From Fan f inner join systemuser u on f.username=u.username
+SELECT f.username ,u.password_,f.national_id, f.name_, f.status_, f.birth_date
+From Fan f inner join System_User_ u on f.username=u.username
 
 go
 Create VIEW allMatches 
 AS
-SELECT c2.name_,c1.name_ , m.start_time
+SELECT c2.name_ as host_id,c1.name_ as guest_id , m.start_time
 from Club c1,club c2, match_ m WHERE m.guest_club_ID=c1.id and m.host_club_id=c2.id
 
 Go
 
 Create View allTickets
 As 
-SELECT c2.name_,c1.name_,s.name_,m.start_time
+SELECT c2.name_ as host_name,c1.name_ as guest_name,s.name_,m.start_time
 from club c1 ,club c2,match_ m, stadium s
 where m.guest_club_ID=c1.id and m.host_club_id=c2.id and m.stadium_id =s.id
 go
@@ -147,16 +151,16 @@ select name_,location_
 from club
 GO
 
-CREATE view allStadiums --AvailBLE WALA LAA
+CREATE view allStadiums 
 as
-SELECT s.name_,s.location_,s.capacity,s.status
+SELECT name_,location_, capacity,status_
 from Stadium
 
 go
 
 create view allRequests
 as
-select r.name_,s.name_,h.status_
+select r.name_ as Club_rep_name,s.name_ as Stadium_Manager_name,h.status_
 from Club_Representative r,Stadium_Manager s,Host_Request h
 where h.manager_id=s.id and h.representative_id=r.id
 go
@@ -167,7 +171,7 @@ CREATE proc addAssociationManager
 @pass varchar(20)
 as
 begin
-insert into SystemUser VALUES (@username,@pass)
+insert into System_User_ VALUES (@username,@pass)
 insert into Sports_Association_Manager values (@name_,@username)
 END
 Go
@@ -180,34 +184,20 @@ create proc addNewMatch
 as 
 BEGIN
 DECLARE @c1 int
-SELECT @c1=c.id from club c where c.name_=@club1.name
+SELECT @c1=c.id from club c where c.name_=@club1_name
 DECLARE @c2 INT
-SELECT @c2=c.id from club c where c.name_=@club2.name
-insert into match_ values(start_time,end_time,@c1,@c2,null)
+SELECT @c2=c.id from club c where c.name_=@club2_name
+insert into match_ values(@start_time,@end_time,@c1,@c2,null)
 END
 Go
 
--- create function return_g_name
--- (@club1_name varchar(20),@club2_name varchar(20),@host_name varchar(20))
--- RETURNS int
--- AS
--- Begin
--- DECLARE @res INT
--- if @club1_name=@host_name
--- SELECT @res= c.id FROM club c where c.name_=@club2_name
--- else select @res= c.id FROM club c where c.name_=@club1_name
--- return @res
--- end
--- GO
-
-
 create view clubsWithNoMatches
-AS SELECT c.id from club 
+AS SELECT c.id from club c
 where 
 not exists (select * from match_ m where m.host_club_id=c.id or m.guest_club_id=c.id )
 GO
 create proc deleteMatch
-@club1 varcahr(20),
+@club1 varchar(20),
 @club2 varchar(20)
 as begin 
 declare @host_id INT 
@@ -265,7 +255,7 @@ As
 Begin
 Insert into Stadium (status_, name_, capacity, location_) values(1, @nameV, @capacityV, @locationV);
 End
-Go;
+Go
 
 create procedure deleteStadium
 @nameV varchar(20)
@@ -273,27 +263,27 @@ As
 Begin
 Delete From Stadium Where name_= @nameV;
 End
-Go;
+go
 
 create procedure blockFan
 @national_idV varchar(20)
 As
 Begin
 Update Fan
-Set status_bit = 1
+Set status_ = 1
 Where national_id = @national_idV;
 End
-Go;
+go
 
 create procedure unblockFan
 @national_idV varchar(20)
 As
 Begin
 Update Fan
-Set status_bit = 0
+Set status_ = 0
 Where national_id = @national_idV;
 End
-Go;
+go
 
 create procedure addRepresentative 
 @nameV varchar(20),
@@ -302,17 +292,17 @@ create procedure addRepresentative
 @passwordV varchar(20)
 As 
 Begin
-Insert into SystemUser values (@usernameV, @passwordV);
+Insert into System_User_ values (@usernameV, @passwordV);
 Insert into club_representative (name_, username, club_ID) values(@nameV, @usernameV, (Select id From Club where name_ = @club_nameV));
 End
-Go;
+go
 
 create function viewAvailableStadiumsOn
 (@dateV datetime)
 Returns Table
 As 
 	Return (Select Stadium.name_, Stadium.location_, Stadium.capacity From (Stadium Left Outer Join Match_ ON Stadium.id = Match_.stadium_id) Where (status_ = 1) and ((Match_.start_time <> @dateV) or Match_.id IS NULL));
-Go;
+go
 
 create procedure addHostRequest 
 @club_nameV varchar(20),
@@ -321,16 +311,16 @@ create procedure addHostRequest
 As 
 Begin
 Insert into Host_Request (status_, match_id, manager_id, representative_id) values 
-('unhandled', (select id from Match_ where start_time = @start_timeV and host_club_id = (Select id from Club where name_ = @club_nameV)), (select Stadium_Manager.id from Stadium_Manager Inner Join Stadium ON Stadium_Manager.studium_id = Stadium.id where Stadium.name_ = @stadium_nameV), (select Club_Representative.id from Club_Representative Inner Join Club ON Club_Representative.club_ID = Club.id where Club.name_ = @club_nameV)); 
+('unhandled', (select id from Match_ where start_time = @start_timeV and host_club_id = (Select id from Club where name_ = @club_nameV)), (select Stadium_Manager.id from Stadium_Manager Inner Join Stadium ON Stadium_Manager.stadium_id = Stadium.id where Stadium.name_ = @stadium_nameV), (select Club_Representative.id from Club_Representative Inner Join Club ON Club_Representative.club_ID = Club.id where Club.name_ = @club_nameV)); 
 End
-Go;
+go
 
 create function allUnassignedMatches
 (@club_nameV varchar(20))
 Returns Table
 As
 	Return (Select HC.name_, M.start_time From (Match_ M Inner Join Club HC ON M.host_club_id = HC.id Inner Join Club GC ON M.guest_club_id = GC.id) Where (HC.name_ = @club_nameV) and (M.stadium_id IS NULL));
-Go;
+go
 
 create procedure addStadiumManager
 @nameV varchar(20),
@@ -339,10 +329,10 @@ create procedure addStadiumManager
 @passwordV varchar(20)
 As 
 Begin
-insert into SystemUser values(@usernameV, @passwordV);
+insert into System_User_ values(@usernameV, @passwordV);
 insert into Stadium_Manager values(@nameV, @usernameV, (select id from Stadium where name_ = @stadium_nameV));
 End
-Go;
+go
 
 
 create function allPendingRequests
@@ -350,7 +340,7 @@ create function allPendingRequests
 Returns table
 As
 
-return (select r.name_,g.name_,m.start_time from Stadium_Manager s
+return (select r.name_ as Club_Rep_Name,g.name_ as Club_Name,m.start_time from Stadium_Manager s
 inner join Host_Request h on h.manager_id=s.id
 inner join Club_Representative r on r.id=h.representative_id
 inner join Match_ m on h.match_id=m.id
@@ -413,7 +403,7 @@ create proc addFan
 @fan_phone_number int
 As
 Begin
-Insert into SystemUser values(@fan_username,@fan_pass)
+Insert into System_User_ values(@fan_username,@fan_pass)
 Insert into Fan(name_,username,national_id,birth_date,address_,phone_number) values
 (@fan_name,@fan_username,@fan_national_id ,@fan_birth_date,@fan_address,@fan_phone_number)
 End
@@ -424,11 +414,11 @@ create function upcomingMatchesOfClub
 returns table
 as
 
-return(select c1.name_,c2.name_,m.start_time,s.name_ from Club c1
+return(select c1.name_ as host_name ,c2.name_ as guest_name ,m.start_time,s.name_ as Stadium_name from Club c1
 inner join Match_ m on c1.id=m.host_club_id or c1.id=m.guest_club_id
 inner join Club c2 on c2.id=m.guest_club_id or c2.id=m.host_club_id
 inner join Stadium s on s.id=m.stadium_id
-where m.start_time>GETDATE() and c1.name_=@club_name)
+where m.start_time> CURRENT_TIMESTAMP and c1.name_=@club_name)
 
 
 Go
@@ -437,7 +427,7 @@ create function availableMatchesToAttend
 returns table
 as
 
-return(select h.name_,g.name_,m.start_time,s.name_ from Match_ m
+return(select h.name_ as host_name ,g.name_ as guest_name,m.start_time,s.name_ as Stadium_name from Match_ m
 inner join Club h on h.id=m.host_club_id
 inner join Club g on g.id=m.guest_club_id
 inner join Stadium s on s.id=m.stadium_id
@@ -488,7 +478,7 @@ SELECT @match_id = m.id, @host_club_id = m.host_club_id,@guest_club_id = m.guest
 FROM Match_ as m
 inner join Club as host on host.id=m.host_club_id
 inner join Club as guest on guest.id=m.guest_club_id
-where @host_club_name = host.host_club_name and @guest_club_name = guest.guest_club_name and @match_start_time = m.start_time
+where @host_club_name = host.name_ and @guest_club_name = guest.name_ and @match_start_time = m.start_time
  
 
  update Match_
@@ -504,26 +494,24 @@ where @host_club_name = host.host_club_name and @guest_club_name = guest.guest_c
  CREATE VIEW matchesPerTeam
  AS
 
- SELECT C.name_, count(*)
- FROM Match_ M INNER JOIN Club C1
- ON M.host_club_id = C1.club_id
- INNER JOIN Club C2
- ON M.guest_club_id = C2.club_id
+ SELECT C.name_, count(*) as count_matches
+ FROM Match_ M INNER JOIN Club C
+ ON M.host_club_id = C.id OR M.guest_club_id = C.id
  GROUP BY C.name_
  Go
 
  CREATE VIEW clubsNeverMatched
  AS
- SELECT C3.name_, C4.name_e
+ SELECT C3.name_ as first_, C4.name_ as second_
  FROM Club C3, Club C4
- WHERE C3.club_id <> C4.club_id
- EXCEPT(
- SELECT *
+ WHERE C3.id <> C4.id
+ EXCEPT( 
+ SELECT C1.name_ as first_, C2.name_ as second_
  FROM Match_ M 
  INNER JOIN Club C1 
- ON M.host_club_id = C1.club_id
+ ON M.host_club_id = C1.id
  INNER JOIN Club C2 
- ON M.guest_club_id = C2.club_id
+ ON M.guest_club_id = C2.id
  )
  Go
 
@@ -538,74 +526,88 @@ FROM Club C
 WHERE NOT EXISTS( SELECT *
 FROM Match_ M
 INNER JOIN CLUB C
-ON C.club_id = M.host_club_id
+ON C.id = M.host_club_id
 INNER JOIN CLUB C1
-ON C1.club_id = M.guest_club_id
+ON C1.id = M.guest_club_id
 WHERE C1.name_ = @club_name)
 AND
 NOT EXISTS( SELECT *
 FROM Match_ M
 INNER JOIN CLUB C
-ON C.club_id = M.guest_club_id
+ON C.id = M.guest_club_id
 INNER JOIN CLUB C2 
-ON C2.club_id = M.host_club_id
+ON C2.id = M.host_club_id
 WHERE C2.name_ = @club_name)
 )   
 Go
 
 --helper function
-CREATE FUNCTION RankMatches()
+CREATE FUNCTION NumberOfTicketsForEachMatch()
 returns table
 AS
 
 return(
-	SELECT C1.name_, C2.name_
+	SELECT C1.name_ as host_name, C2.name_ as guest_name, count(T.id) as count_tickets 
 	FROM Match_ M
-	INNER JOIN Club C1 ON C1.club_id = M.host_club_id
-	INNER JOIN Club C2 ON C2.club_id = M.guest_club_id
-	INNER JOIN Ticket T ON M.match_id = T.match_id
-	GROUP BY C1.name_, C2.name_
-	ORDER BY count(T.id) desc
+	INNER JOIN Club C1 ON C1.id = M.host_club_id
+	INNER JOIN Club C2 ON C2.id = M.guest_club_id
+	INNER JOIN Ticket T ON M.id = T.match_id
+    GROUP BY  C1.name_, C2.name_
 )
 go
 
+
+go
 CREATE FUNCTION matchWithHighestAttendance()
 returns table
 AS
 
 return(
-	SELECT TOP 1 * FROM 
-	RankMatches
+	SELECT TOP 1 host_name, guest_name FROM 
+	NumberOfTicketsForEachMatch()
+    ORDER BY count_tickets desc
+    
 )
 
 Go
+CREATE FUNCTION pastMatches()
+returns table
+AS
+return (
+SELECT C1.name_ as guest_name, C2.name_ as host_name, count(T.id) as count_tickets
+FROM Match_ M
+INNER JOIN Club C1 ON C1.id = M.host_club_id
+INNER JOIN Club C2 ON C2.id = M.guest_club_id
+INNER JOIN Ticket T ON M.id = T.match_id
+WHERE M.end_time < CURRENT_TIMESTAMP
+GROUP BY C1.name_, C2.name_
+)
 
+
+go
 CREATE FUNCTION matchesRankedByAttendance()
 returns table
 AS
 return(
-SELECT C1.name_, C2.name_
-FROM Match_ M
-INNER JOIN Club C1 ON C1.club_id = M.host_club_id
-INNER JOIN Club C2 ON C2.club_id = M.guest_club_id
-INNER JOIN Ticket T ON M.match_id = T.match_id
-WHERE M.end_time < CURRENT_TIMESTAMP
-GROUP BY C1.name, C2.name
-ORDER BY count(T.id) desc
+SELECT TOP 100 PERCENT host_name, guest_name 
+FROM
+pastMatches()
+ORDER BY count_tickets desc
 )
+    
 GO
 CREATE FUNCTION requestsFromClub
 (@stadium_name Varchar(20), @club_name varchar(20))
 returns table
 AS
 return(
-SELECT C1.name_, C2.name_
-FROM Match_ M INNER JOIN Club C1 ON C1.club_id = M.host_club_id
-INNER JOIN Club C2 ON C2.club_id = M.guest_club_id
+SELECT C1.name_ as host_name, C2.name_ as guest_name
+FROM Match_ M INNER JOIN Club C1 ON C1.id = M.host_club_id
+INNER JOIN Club C2 ON C2.id = M.guest_club_id
 INNER JOIN Host_Request H ON H.match_id = M.id
 INNER JOIN Stadium_Manager SM ON H.manager_id = SM.id
 INNER JOIN Stadium S ON SM.stadium_id = S.id
 INNER JOIN Club_Representative CR ON CR.id = H.representative_id
-INNER JOIN Club C ON C.club_id = CR.club_id
+INNER JOIN Club C ON C.id = CR.club_id
 WHERE S.name_ = @stadium_name and CR.name_ = @club_name
 )
