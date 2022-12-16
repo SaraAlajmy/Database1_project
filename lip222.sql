@@ -192,7 +192,7 @@ END
 Go
 
 create view clubsWithNoMatches
-AS SELECT c.id from club c
+AS SELECT c.name_ from club c
 where 
 not exists (select * from match_ m where m.host_club_id=c.id or m.guest_club_id=c.id )
 GO
