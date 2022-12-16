@@ -133,7 +133,7 @@ From Fan f inner join System_User_ u on f.username=u.username
 go
 Create VIEW allMatches 
 AS
-SELECT c2.name_ as host_id,c1.name_ as guest_id , m.start_time
+SELECT c2.name_ as host_name,c1.name_ as guest_name , m.start_time
 from Club c1,club c2, match_ m WHERE m.guest_club_ID=c1.id and m.host_club_id=c2.id
 
 Go
