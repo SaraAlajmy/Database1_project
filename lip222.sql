@@ -4,15 +4,15 @@ begin
 CREATE TABLE System_User_ (username varchar(20) primary key ,password_ varchar(20))
 CREATE TABLE Club(id int primary key IDENTITY, name_ varchar(20), location_ varchar(20))
 CREATE TABLE Stadium(id int primary key IDENTITY, status_ bit, name_ varchar(20), capacity int, location_ varchar(20))
-CREATE TABLE Club_Representative(id int primary key IDENTITY, name_ varchar(20), username varchar(20), foreign key(username) references System_User_,club_id int, foreign key(club_id) references Club(id) on delete no action)
-CREATE TABLE Stadium_Manager(id int primary key IDENTITY, name_ varchar(20), username varchar(20), foreign key(username) references System_User_(username),stadium_id int,foreign key(stadium_id)references Stadium(id) on delete no action)
-CREATE TABLE Fan(national_id int primary key, phone_number int, name_ varchar(20), address_ varchar(20), status_ bit, birth_date date, username varchar(20), foreign key(username) references System_User_(username))
-CREATE TABLE Sports_Association_Manager(id int primary key IDENTITY, name_ varchar(20), username varchar(20), foreign key(username) references System_User_(username))
-CREATE TABLE System_Admin(id int primary key IDENTITY, name_ varchar(20), username varchar(20), foreign key(username) references System_User_(username))
-CREATE TABLE Match_(id int primary key IDENTITY, start_time datetime, end_time datetime,host_club_id int,guest_club_id int,foreign key(host_club_id) references club(id) on delete no action on update no action,FOREIGN key(guest_club_id) REFERENCES club(id) on delete no action on update no action,stadium_id int,FOREIGN key(stadium_id) REFERENCES stadium(id) on delete no action on update no action)
+CREATE TABLE Club_Representative(id int primary key IDENTITY, name_ varchar(20), username varchar(20), foreign key(username) references System_User_,club_id int, foreign key(club_id) references Club(id) on delete SET NULL ON UPDATE CASCADE)
+CREATE TABLE Stadium_Manager(id int primary key IDENTITY, name_ varchar(20), username varchar(20), foreign key(username) references System_User_(username),stadium_id int,foreign key(stadium_id)references Stadium(id) on delete SET NULL ON UPDATE CASCADE)
+CREATE TABLE Fan(national_id int primary key, phone_number int, name_ varchar(20), address_ varchar(20), status_ bit, birth_date date, username varchar(20), foreign key(username) references System_User_(username) ON DELETE CASCADE ON UPDATE CASCADE)
+CREATE TABLE Sports_Association_Manager(id int primary key IDENTITY, name_ varchar(20), username varchar(20), foreign key(username) references System_User_(username) ON DELETE CASCADE ON UPDATE CASCADE)
+CREATE TABLE System_Admin(id int primary key IDENTITY, name_ varchar(20), username varchar(20), foreign key(username) references System_User_(username) ON DELETE CASCADE ON UPDATE CASCADE)
+CREATE TABLE Match_(id int primary key IDENTITY, start_time datetime, end_time datetime,host_club_id int,guest_club_id int,foreign key(host_club_id) references club(id) ON DELETE no action ON UPDATE no action,FOREIGN key(guest_club_id) REFERENCES club(id)  ON DELETE no action ON UPDATE no action,stadium_id int,FOREIGN key(stadium_id) REFERENCES stadium(id) ON DELETE SET NULL ON UPDATE CASCADE)
 CREATE TABLE Ticket(id int primary key IDENTITY, status_ bit,match_id int,foreign key (match_id) references Match_(id) on delete cascade)
-CREATE TABLE Host_Request(id int primary key IDENTITY, status_ varchar(20), match_id int foreign key references match_(id) on delete no action,manager_id int foreign key references Stadium_Manager(id) on delete cascade on update cascade ,representative_id int foreign key references Club_Representative(id) on delete cascade on update cascade)
-CREATE TABLE Ticket_Buying_Transactions(fan_national_Id int foreign key references fan(national_id) on delete no action,ticket_id int foreign key references Ticket(id) on delete cascade)
+CREATE TABLE Host_Request(id int primary key IDENTITY, status_ varchar(20), match_id int foreign key references match_(id)  ON DELETE CASCADE ON UPDATE CASCADE,manager_id int foreign key references Stadium_Manager(id) on delete NO ACTION on update NO ACTION ,representative_id int foreign key references Club_Representative(id) on delete cascade on update cascade)
+CREATE TABLE Ticket_Buying_Transactions(fan_national_Id int foreign key references fan(national_id) ON DELETE SET NULL ON UPDATE CASCADE,ticket_id int foreign key references Ticket(id) ON DELETE CASCADE ON UPDATE CASCADE)
 end
 
 --EXEC createAllTables
@@ -243,8 +243,10 @@ GO
 create proc deleteClub
 @name varchar(20)
 as BEGIN
-DELETE from club where name_=@name; --should i delete matches or add on delete cascade cons??
+DELETE from Match_ where id IN (Select t.id From Match_ t INNER JOIN Club g ON t.guest_club_id=g.id INNER JOIN Club h ON t.host_club_id=h.id  where (g.name_ = @name) or (h.name_ = @name))
+DELETE from club where name_=@name;
 END
+
 GO
 
 create procedure addStadium 
