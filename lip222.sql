@@ -507,15 +507,17 @@ where @host_club_name = host.name_ and @guest_club_name = guest.name_ and @match
  Set guest_club_id = @host_club_id 
  where id = @match_id
  End
-
+ 
  Go
+ 
  CREATE VIEW matchesPerTeam
  AS
-
- SELECT C.name_, count(*) as count_matches
- FROM Match_ M INNER JOIN Club C
- ON M.host_club_id = C.id OR M.guest_club_id = C.id
+ SELECT C.name_, count(M.id) as count_matches
+ FROM Match_ M RIGHT OUTER JOIN Club C
+ ON M.host_club_id = C.id OR M.guest_club_id = C.id left outer join Host_Request r on M.id=r.match_id
+ WHERE M.id IS NULL OR M.start_time < CURRENT_TIMESTAMP and r.status_='accepted'
  GROUP BY C.name_
+ 
  Go
 
  CREATE VIEW clubsNeverMatched
@@ -527,13 +529,15 @@ where @host_club_name = host.name_ and @guest_club_name = guest.name_ and @match
  SELECT C1.name_ as first_, C2.name_ as second_
  FROM Match_ M 
  INNER JOIN Club C1 
- ON M.host_club_id = C1.id
+ ON M.host_club_id = C1.id or M.guest_club_id = C1.id
  INNER JOIN Club C2 
- ON M.guest_club_id = C2.id
+ ON M.guest_club_id = C2.id or M.host_club_id = C2.id
+ Inner join Host_Request r on M.id=r.match_id
+ where M.start_time<CURRENT_TIMESTAMP and r.status_='accepted'
  )
  Go
 
- create function clubsNeverPlayed
+create function clubsNeverPlayed
 (@club_name varchar(20))
 returns table
 AS
@@ -541,22 +545,25 @@ AS
 return(
 SELECT C.name_
 FROM Club C 
-WHERE NOT EXISTS( SELECT *
+WHERE C.id not in( SELECT C.id
 FROM Match_ M
 INNER JOIN CLUB C
 ON C.id = M.host_club_id
 INNER JOIN CLUB C1
 ON C1.id = M.guest_club_id
-WHERE C1.name_ = @club_name)
-AND
-NOT EXISTS( SELECT *
+Inner Join Host_Request r on r.match_id=M.id
+WHERE C1.name_ = @club_name and r.status_='accpted' )
+And
+C.id NOT in( SELECT C.id
 FROM Match_ M
 INNER JOIN CLUB C
 ON C.id = M.guest_club_id
 INNER JOIN CLUB C2 
 ON C2.id = M.host_club_id
-WHERE C2.name_ = @club_name)
-)   
+Inner Join Host_Request r on r.match_id=M.id
+WHERE C2.name_ = @club_name and r.status_ ='accepted' )
+and C.name_<>@club_name
+)
 Go
 
 --helper function
@@ -569,13 +576,12 @@ return(
 	FROM Match_ M
 	INNER JOIN Club C1 ON C1.id = M.host_club_id
 	INNER JOIN Club C2 ON C2.id = M.guest_club_id
-	INNER JOIN Ticket T ON M.id = T.match_id
+	INNER JOIN Ticket T ON M.id = T.match_id where T.status_=0
     GROUP BY  C1.name_, C2.name_
 )
-go
-
 
 go
+
 CREATE FUNCTION matchWithHighestAttendance()
 returns table
 AS
@@ -592,41 +598,32 @@ CREATE FUNCTION pastMatches()
 returns table
 AS
 return (
-SELECT C1.name_ as guest_name, C2.name_ as host_name, count(T.id) as count_tickets
+SELECT C1.name_ as host_name, C2.name_ as guest_name, count(T.id) as count_tickets
 FROM Match_ M
 INNER JOIN Club C1 ON C1.id = M.host_club_id
 INNER JOIN Club C2 ON C2.id = M.guest_club_id
-INNER JOIN Ticket T ON M.id = T.match_id
+INNER JOIN Ticket T ON M.id = T.match_id INNER JOIN Ticket_Buying_Transactions trans ON T.id = trans.ticket_id
 WHERE M.end_time < CURRENT_TIMESTAMP
 GROUP BY C1.name_, C2.name_
 )
+GO
 
-
-go
 CREATE FUNCTION matchesRankedByAttendance()
 returns table
 AS
-return(
-SELECT TOP 100 PERCENT host_name, guest_name 
+return
+(SELECT TOP 100 PERCENT host_name, guest_name, count_tickets 
 FROM
 pastMatches()
-ORDER BY count_tickets desc
-)
-    
+ORDER BY count_tickets desc)
+
 GO
 CREATE FUNCTION requestsFromClub
 (@stadium_name Varchar(20), @club_name varchar(20))
 returns table
 AS
-return(
-SELECT C1.name_ as host_name, C2.name_ as guest_name
-FROM Match_ M INNER JOIN Club C1 ON C1.id = M.host_club_id
-INNER JOIN Club C2 ON C2.id = M.guest_club_id
-INNER JOIN Host_Request H ON H.match_id = M.id
-INNER JOIN Stadium_Manager SM ON H.manager_id = SM.id
-INNER JOIN Stadium S ON SM.stadium_id = S.id
-INNER JOIN Club_Representative CR ON CR.id = H.representative_id
-INNER JOIN Club C ON C.id = CR.club_id
-WHERE S.name_ = @stadium_name and CR.name_ = @club_name
-)
+return (Select HC.name_ as Host_Club_Name, GC.name_  as Guest_Club_Name 
+From Host_Request hr INNER JOIN Match_ m ON (hr.match_id= m.id) INNER JOIN Club HC ON (HC.id = m.host_club_id) INNER JOIN Club GC ON (GC.id = m.Guest_club_id) INNER JOIN Stadium_Manager sm ON hr.manager_id=sm.id INNER JOIN Stadium s ON sm.stadium_id=s.id
+Where HC.name_ =  @club_name  and @stadium_name = s.name_)
+
 GO
