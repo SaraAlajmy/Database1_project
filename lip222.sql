@@ -263,8 +263,11 @@ create procedure deleteStadium
 @nameV varchar(20)
 As 
 Begin
+DELETE FROM Host_Request Where id IN (Select hr.id From Host_Request hr Inner Join Stadium_Manager sm ON hr.manager_id = sm.id INNER JOIN Stadium s ON sm.stadium_id = s.id Where s.name_ = @nameV)
+DELETE FROM Ticket Where id IN (Select t.id From Ticket t INNER JOIN Match_ m ON t.match_id = m.id INNER JOIN Stadium s ON m.stadium_id = s.id Where s.name_=@nameV)
 Delete From Stadium Where name_= @nameV;
 End
+ 
 go
 
 create procedure blockFan
