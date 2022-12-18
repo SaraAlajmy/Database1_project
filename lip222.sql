@@ -357,8 +357,8 @@ create proc acceptRequest
 @guest_club_name varchar(20),
 @start_time datetime
 As
-Begin
-Update Host_Request 
+Begin 
+UPDATE Host_Request
 Set status_='accepted'
 where id =
 (select h.id from Host_Request h
@@ -369,7 +369,23 @@ inner join club as guest on m.guest_club_id=guest.id
 where s.username=@stadium_manager_username 
 and host.name_=@hosting_club_name
 and guest.name_=@guest_club_name
+and m.start_time=@start_time);
+UPDATE Match_
+Set stadium_id = (Select s.stadium_id From Host_Request h
+inner join Stadium_Manager s  on s.id=h.manager_id
+inner join Match_ m on h.match_id=m.id
+inner join club as host on m.host_club_id=host.id
+inner join club as guest on m.guest_club_id=guest.id
+where s.username=@stadium_manager_username 
+and host.name_=@hosting_club_name
+and guest.name_=@guest_club_name
 and m.start_time=@start_time)
+declare @i int =0
+while @i< (Select capacity From Stadium Inner Join Stadium_Manager ON Stadium.id = Stadium_Manager.stadium_id Where @stadium_manager_username = username)
+Begin
+EXEC addTicket @host = @hosting_club_name , @guest = @guest_club_name, @time = @start_time;
+SET @i = @i+1
+End
 End
 
 Go
