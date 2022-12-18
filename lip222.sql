@@ -14,12 +14,9 @@ CREATE TABLE Ticket(id int primary key IDENTITY, status_ bit,match_id int,foreig
 CREATE TABLE Host_Request(id int primary key IDENTITY, status_ varchar(20), match_id int foreign key references match_(id)  ON DELETE CASCADE ON UPDATE CASCADE,manager_id int foreign key references Stadium_Manager(id) on delete NO ACTION on update NO ACTION ,representative_id int foreign key references Club_Representative(id) on delete cascade on update cascade)
 CREATE TABLE Ticket_Buying_Transactions(fan_national_Id int foreign key references fan(national_id) ON DELETE SET NULL ON UPDATE CASCADE,ticket_id int foreign key references Ticket(id) ON DELETE CASCADE ON UPDATE CASCADE)
 end
-
---EXEC createAllTables
-
-
-   
+  
 GO
+
 CREATE PROC dropAllTables 
 as 
 Begin
@@ -127,7 +124,7 @@ go
 
 Create VIEW allFans
 As 
-SELECT f.username ,u.password_,f.national_id, f.name_, f.status_, f.birth_date
+SELECT f.username ,u.password_, f.name_, f.national_id, f.birth_date, f.status_
 From Fan f inner join System_User_ u on f.username=u.username
 
 go
@@ -189,13 +186,16 @@ DECLARE @c2 INT
 SELECT @c2=c.id from club c where c.name_=@club2_name
 insert into match_ values(@start_time,@end_time,@c1,@c2,null)
 END
+
 Go
 
 create view clubsWithNoMatches
 AS SELECT c.name_ from club c
 where 
 not exists (select * from match_ m where m.host_club_id=c.id or m.guest_club_id=c.id )
+
 GO
+
 create proc deleteMatch
 @club1 varchar(20),
 @club2 varchar(20)
@@ -206,6 +206,7 @@ declare @guest_id INT
 SELECT @guest_id=c.id from club c where c.name_=@club2 
 DELETE from match_ where host_club_id=@host_id and guest_club_id=@guest_id
 END
+
 GO
 
 create proc deleteMatchesOnStadium
@@ -266,7 +267,7 @@ DELETE FROM Host_Request Where id IN (Select hr.id From Host_Request hr Inner Jo
 DELETE FROM Ticket Where id IN (Select t.id From Ticket t INNER JOIN Match_ m ON t.match_id = m.id INNER JOIN Stadium s ON m.stadium_id = s.id Where s.name_=@nameV)
 Delete From Stadium Where name_= @nameV;
 End
- 
+
 GO
 
 create procedure blockFan
@@ -274,20 +275,22 @@ create procedure blockFan
 As
 Begin
 Update Fan
-Set status_ = 1
+Set status_ = 0
 Where national_id = @national_idV;
 End
-go
+
+GO
 
 create procedure unblockFan
 @national_idV varchar(20)
 As
 Begin
 Update Fan
-Set status_ = 0
+Set status_ = 1
 Where national_id = @national_idV;
 End
-go
+
+GO
 
 create procedure addRepresentative 
 @nameV varchar(20),
@@ -305,8 +308,9 @@ create function viewAvailableStadiumsOn
 (@dateV datetime)
 Returns Table
 As 
-	Return (Select Stadium.name_, Stadium.location_, Stadium.capacity From (Stadium Left Outer Join Match_ ON Stadium.id = Match_.stadium_id) Where (status_ = 1) and ((Match_.start_time <> @dateV) or Match_.id IS NULL));
-go
+	Return (Select Stadium.name_, Stadium.location_, Stadium.capacity From (Stadium Left Outer Join Match_ ON Stadium.id = Match_.stadium_id) Where (status_ = 1) and ((Match_.start_time > @dateV or @dateV >Match_.end_time) or Match_.id IS NULL));
+
+GO
 
 create procedure addHostRequest 
 @club_nameV varchar(20),
@@ -323,9 +327,9 @@ create function allUnassignedMatches
 (@club_nameV varchar(20))
 Returns Table
 As
-	Return (Select HC.name_, M.start_time From (Match_ M Inner Join Club HC ON M.host_club_id = HC.id Inner Join Club GC ON M.guest_club_id = GC.id) Where (HC.name_ = @club_nameV) and (M.stadium_id IS NULL));
-go
+	Return (Select GC.name_, M.start_time From (Match_ M Inner Join Club HC ON M.host_club_id = HC.id Inner Join Club GC ON M.guest_club_id = GC.id) Where (HC.name_ = @club_nameV) and (M.stadium_id IS NULL));
 
+GO
 create procedure addStadiumManager
 @nameV varchar(20),
 @stadium_nameV varchar(20),
@@ -419,8 +423,8 @@ create proc addFan
 As
 Begin
 Insert into System_User_ values(@fan_username,@fan_pass)
-Insert into Fan(name_,username,national_id,birth_date,address_,phone_number) values
-(@fan_name,@fan_username,@fan_national_id ,@fan_birth_date,@fan_address,@fan_phone_number)
+Insert into Fan(name_,username,national_id,birth_date,address_,phone_number, status_) values
+(@fan_name,@fan_username,@fan_national_id ,@fan_birth_date,@fan_address,@fan_phone_number, 1)
 End
 
 Go
@@ -428,13 +432,9 @@ create function upcomingMatchesOfClub
 (@club_name varchar(20))
 returns table
 as
-
-return(select c1.name_ as host_name ,c2.name_ as guest_name ,m.start_time,s.name_ as Stadium_name from Club c1
-inner join Match_ m on c1.id=m.host_club_id or c1.id=m.guest_club_id
-inner join Club c2 on c2.id=m.guest_club_id or c2.id=m.host_club_id
-inner join Stadium s on s.id=m.stadium_id
-where m.start_time> CURRENT_TIMESTAMP and c1.name_=@club_name)
-
+return (select c1.name_ as Club_Name, c2.name_ as Competing_Club_Name, m.start_time, s.name_ as Stadium_Name 
+From (Club c1 Inner Join Match_ m ON (c1.id = m.host_club_id or c1.id = m.guest_club_id) Inner JOIN Club c2 ON (c2.id = m.host_club_id or c2.id = m.guest_club_id) INNER JOIN Stadium s ON s.id = m.stadium_id)
+Where c1.name_ = @club_name and c2.name_ <> @club_name);
 
 Go
 create function availableMatchesToAttend
