@@ -414,6 +414,7 @@ and m.start_time=@start_time)
 End
 
 Go
+
 create proc addFan
 @fan_name varchar(20),
 @fan_username varchar(20),
