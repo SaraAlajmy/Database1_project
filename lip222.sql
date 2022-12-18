@@ -18,7 +18,7 @@ end
 --EXEC createAllTables
 
 
-    
+   
 GO
 CREATE PROC dropAllTables 
 as 
@@ -248,7 +248,6 @@ DELETE from club where name_=@name;
 END
 
 GO
-
 create procedure addStadium 
 @nameV varchar(20),
 @locationV varchar(20),
@@ -268,7 +267,7 @@ DELETE FROM Ticket Where id IN (Select t.id From Ticket t INNER JOIN Match_ m ON
 Delete From Stadium Where name_= @nameV;
 End
  
-go
+GO
 
 create procedure blockFan
 @national_idV varchar(20)
@@ -352,8 +351,8 @@ inner join Match_ m on h.match_id=m.id
 inner join club g on m.guest_club_id=g.id
 where s.username=@stadium_manager_name and h.status_='unhandled')
 
-
 Go
+
 create proc acceptRequest
 @stadium_manager_username varchar(20),
 @hosting_club_name varchar(20),
@@ -374,15 +373,8 @@ and host.name_=@hosting_club_name
 and guest.name_=@guest_club_name
 and m.start_time=@start_time);
 UPDATE Match_
-Set stadium_id = (Select s.stadium_id From Host_Request h
-inner join Stadium_Manager s  on s.id=h.manager_id
-inner join Match_ m on h.match_id=m.id
-inner join club as host on m.host_club_id=host.id
-inner join club as guest on m.guest_club_id=guest.id
-where s.username=@stadium_manager_username 
-and host.name_=@hosting_club_name
-and guest.name_=@guest_club_name
-and m.start_time=@start_time)
+Set stadium_id = (Select s.stadium_id From Stadium_Manager s Where s.username = @stadium_manager_username) 
+Where host_club_id = (Select h.id from Club h where h.name_= @hosting_club_name) and guest_club_id = (Select g.id from Club g where g.name_= @guest_club_name) and start_time = @start_time;
 declare @i int =0
 while @i< (Select capacity From Stadium Inner Join Stadium_Manager ON Stadium.id = Stadium_Manager.stadium_id Where @stadium_manager_username = username)
 Begin
@@ -390,8 +382,9 @@ EXEC addTicket @host = @hosting_club_name , @guest = @guest_club_name, @time = @
 SET @i = @i+1
 End
 End
-
+ 
 Go
+
 create proc rejectRequest 
 @stadium_manager_username varchar(20),
 @hosting_club_name varchar(20),
@@ -414,7 +407,7 @@ and m.start_time=@start_time)
 End
 
 Go
-
+Go
 create proc addFan
 @fan_name varchar(20),
 @fan_username varchar(20),
@@ -460,14 +453,16 @@ where t.status_=1
 Group by m1.id
 having count(t.id)<>0))
 
-
 Go
+
 create proc purchaseTicket
 @fan_national_id varchar(20) ,
 @hosting_club_name varchar(20),
 @competing_club_name varchar(20),
 @match_start_time datetime
 as
+Begin
+If (Select status_ From Fan Where national_id=@fan_national_id)=1
 Begin
 DECLARE @ticket_id varchar(20)
 select @ticket_id = min(t.id) from Ticket t 
@@ -485,6 +480,7 @@ update Ticket
 Set status_=0
 where id=@ticket_id
 End
+End 
 
 Go
 CREATE PROC updateMatchHost
@@ -633,3 +629,4 @@ INNER JOIN Club_Representative CR ON CR.id = H.representative_id
 INNER JOIN Club C ON C.id = CR.club_id
 WHERE S.name_ = @stadium_name and CR.name_ = @club_name
 )
+GO
