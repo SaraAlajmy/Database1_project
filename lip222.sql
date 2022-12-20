@@ -14,7 +14,7 @@ CREATE TABLE Ticket(id int primary key IDENTITY, status_ bit,match_id int,foreig
 CREATE TABLE Host_Request(id int primary key IDENTITY, status_ varchar(20), match_id int foreign key references match_(id)  ON DELETE CASCADE ON UPDATE CASCADE,manager_id int foreign key references Stadium_Manager(id) on delete NO ACTION on update NO ACTION ,representative_id int foreign key references Club_Representative(id) on delete cascade on update cascade)
 CREATE TABLE Ticket_Buying_Transactions(fan_national_Id int foreign key references fan(national_id) ON DELETE SET NULL ON UPDATE CASCADE,ticket_id int foreign key references Ticket(id) ON DELETE CASCADE ON UPDATE CASCADE)
 end
-  
+
 GO
 
 CREATE PROC dropAllTables 
@@ -88,18 +88,19 @@ go
 CREATE PROC clearAllTables 
 as 
 BEGIN
-    Truncate TABLE System_User_;
-    TRUNCATE TABLE Club_Representitave;
-    TRUNCATE TABLE Stadium_Manager;
-    TRUNCATE TABLE Fan;
-    TRUNCATE TABLE Sports_Association_Manager;
-    TRUNCATE TABLE System_Admin;
-    TRUNCATE TABLE Ticket;
-    TRUNCATE TABLE Club;
-    TRUNCATE TABLE Host_Request;
-    TRUNCATE TABLE Match_;
-    TRUNCATE TABLE Stadium;
-    truncate table Ticket_Buying_Transactions
+	Delete from  Ticket_Buying_Transactions
+Delete from Host_Request
+Delete from Ticket
+Delete from Match_
+Delete from System_Admin
+Delete from Sports_Association_Manager
+Delete from Fan
+Delete from Stadium_Manager
+Delete from Club_Representative
+Delete from Stadium
+Delete from Club
+Delete from System_User_
+    
 END
 
 GO
@@ -587,7 +588,7 @@ returns table
 AS
 
 return(
-	SELECT TOP 1 host_name, guest_name FROM 
+	SELECT TOP 1 WITH TIES host_name, guest_name FROM 
 	NumberOfTicketsForEachMatch()
     ORDER BY count_tickets desc
     
@@ -598,26 +599,34 @@ CREATE FUNCTION pastMatches()
 returns table
 AS
 return (
-SELECT C1.name_ as host_name, C2.name_ as guest_name, count(T.id) as count_tickets
+SELECT C1.name_ as host_club, C2.name_ as guest_club, Count.count_tickets 
 FROM Match_ M
 INNER JOIN Club C1 ON C1.id = M.host_club_id
 INNER JOIN Club C2 ON C2.id = M.guest_club_id
-INNER JOIN Ticket T ON M.id = T.match_id INNER JOIN Ticket_Buying_Transactions trans ON T.id = trans.ticket_id
-WHERE M.end_time < CURRENT_TIMESTAMP
-GROUP BY C1.name_, C2.name_
+inner join (
+SELECT count(distinct T.id) as count_tickets,  M2.id as match_id
+FROM Match_ M2 left outer join Ticket T on T.match_id = M2.id
+inner join Club C3 on C3.id =M2.host_club_id
+inner join Club C4 on C4.id = M2.guest_club_id
+where T.status_ = 0 or  T.id  is null
+group by M2.id
+) AS Count
+ON Count.match_id = M.id 
 )
-GO
 
+go
 CREATE FUNCTION matchesRankedByAttendance()
 returns table
 AS
-return
-(SELECT TOP 100 PERCENT host_name, guest_name, count_tickets 
-FROM
+return(
+SELECT  host_club, guest_club
+FROM 
 pastMatches()
-ORDER BY count_tickets desc)
+ORDER BY count_tickets desc offset 0 row
+)
 
 GO
+
 CREATE FUNCTION requestsFromClub
 (@stadium_name Varchar(20), @club_name varchar(20))
 returns table
@@ -627,3 +636,13 @@ From Host_Request hr INNER JOIN Match_ m ON (hr.match_id= m.id) INNER JOIN Club 
 Where HC.name_ =  @club_name  and @stadium_name = s.name_)
 
 GO
+
+
+
+
+
+
+
+
+
+
